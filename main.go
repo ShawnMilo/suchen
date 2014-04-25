@@ -1,28 +1,27 @@
 package main
 
 import (
+    "flags"
     "fmt"
     "path/filepath"
-    "flags"
 )
 
 func dumper(c chan string) filepath.WalkFunc {
 
-    return func (path string, info os.FileInfo, err error) error {
+    return func(path string, info os.FileInfo, err error) error {
         c <- string
         return nil
     }
 
-
 }
 
 func main() {
-    var filenames channel string
+
+    filenames := make(chan string, 3333)
     var root string
 
     f := dumper(filenames)
 
-    
     flags.parse()
     if len(flags.Argv) == 0 {
         root = "."
@@ -37,7 +36,7 @@ func main() {
 
     count := 0
 
-    for filename := range(filenames) {
+    for filename := range filenames {
         count += 1
     }
 
