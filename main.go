@@ -114,12 +114,12 @@ func main() {
 }
 
 // checkFile takes a filename and reads the file to determine
-// whether the file contains the regex in the global pattern. 
+// whether the file contains the regex in the global pattern.
 func checkFile(filename string) {
-   file, err := os.Open(filename)
-   if err != nil {
-       log.Println(err)
-       return
+    file, err := os.Open(filename)
+    if err != nil {
+        log.Println(err)
+        return
     }
     scanner := bufio.NewScanner(file)
     line := 0
