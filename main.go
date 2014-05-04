@@ -2,7 +2,6 @@ package main
 
 import (
     "bufio"
-    "flag"
     "fmt"
     "log"
     "os"
@@ -45,21 +44,15 @@ func getNames(c chan string) filepath.WalkFunc {
 // least. Optionally, a path (defaulting to "."), and
 // file extensions to search may be provided.
 func init() {
-    var insensitive = false
-    flag.BoolVar(&insensitive, "i", false, "Case-insensitive search.")
-    flag.Parse()
-    args := flag.Args()
+    args := os.Args[1:]
     if len(args) == 0 {
         log.Fatalf("No arguments passed.")
     }
     args = getExts(args)
     args = getRoot(args)
+    ci, args := getCaseStr(args)
     if len(args) != 1 {
         log.Fatalf("Unable to find pattern.\n")
-    }
-    var ci string
-    if insensitive {
-        ci = "(?i)"
     }
     p, err := regexp.Compile(ci + args[0])
     if err != nil {
@@ -68,6 +61,22 @@ func init() {
     pattern = p
     cpus = runtime.NumCPU()
     runtime.GOMAXPROCS(cpus)
+}
+
+// getCaseStr accepts command-line flags and strips out
+// the -i flag (if it exists). It returns a boolean for whether
+// the regex should be case-insensitive and the args.
+func getCaseStr(args []string) (string, []string) {
+    var unused []string
+    ci := ""
+    for _, val := range args {
+        if val == "-i" {
+            ci = "(?i)"
+        } else {
+            unused = append(unused, val)
+        }
+    }
+    return ci, unused
 }
 
 // getExts sets the extensions global variable,
