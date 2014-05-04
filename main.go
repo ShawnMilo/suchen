@@ -140,6 +140,9 @@ func main() {
     for i := 0; i < cpus; i++ {
         <-done
     }
+    defer func() {
+        os.Stdout.Sync()
+    }()
 }
 
 // feedCheckFile receives a channel of strings and a done
