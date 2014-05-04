@@ -71,7 +71,7 @@ func getExts(args []string) []string {
             if len(val) < 3 {
                 log.Fatalf("Invalid extension: '%s'\n", val)
             }
-            extensions = append(extensions, "." + val[2:])
+            extensions = append(extensions, "."+val[2:])
         } else {
             unused = append(unused, val)
         }
@@ -115,7 +115,7 @@ func main() {
         go checkFile(filename, results)
     }
     for count > 0 {
-        <- results
+        <-results
         count--
     }
 }
