@@ -131,10 +131,10 @@ func main() {
 // feedCheckFile receives a channel of strings and a results
 // channel (of bool) and calls checkFile in a loop. It would be
 // easier to rewrite checkFile to just add a simple loop, but this
-// allows the checkFile code to remain simpler in case I decide 
+// allows the checkFile code to remain simpler in case I decide
 // to use it differently later.
 func feedCheckFile(filenames chan string, results chan bool) {
-    for val := range(filenames) {
+    for val := range filenames {
         checkFile(val)
     }
     results <- true
