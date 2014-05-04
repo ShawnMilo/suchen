@@ -4,9 +4,9 @@ import (
     "flag"
     "fmt"
     "log"
+    "milo/utils"
     "os"
     "path/filepath"
-    "milo/utils"
     "strings"
 )
 
@@ -14,7 +14,7 @@ var root string
 var extensions []string
 var pattern string
 
-// getNames creates a filepath.WalkFunc suitable for passing to 
+// getNames creates a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
 func getNames(c chan string) filepath.WalkFunc {
     return func(path string, info os.FileInfo, err error) error {
@@ -34,7 +34,7 @@ func init() {
     args := flag.Args()
     if len(args) == 0 {
         log.Fatalf("No arguments passed.")
-    } 
+    }
     args = getExts(args)
     args = getRoot(args)
 }
@@ -45,7 +45,7 @@ func init() {
 func getExts(args []string) []string {
     var unused []string
     for _, val := range args {
-        if strings.HasPrefix(val, "--"){
+        if strings.HasPrefix(val, "--") {
             extensions = append(extensions, val)
         } else {
             unused = append(unused, val)
@@ -55,7 +55,7 @@ func getExts(args []string) []string {
 }
 
 // getRoot finds a valid directory in the command-line
-// args, sets it to the global "root" variable, and 
+// args, sets it to the global "root" variable, and
 // returns the remaining arguments.
 func getRoot(args []string) []string {
     var unused []string
