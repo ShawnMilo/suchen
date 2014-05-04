@@ -129,13 +129,14 @@ func checkFile(filename string, done chan bool) {
         done <- true
         return
     }
+    defer file.Close()
     scanner := bufio.NewScanner(file)
     line := 0
     for scanner.Scan() {
         line += 1
         found := pattern.FindIndex(scanner.Bytes())
         if found != nil {
-            fmt.Printf("%s: line %d: %s\n", filename, line, scanner.Text())
+            fmt.Printf("%s:%d: %s\n", filename, line, scanner.Text())
         }
     }
     done <- true
