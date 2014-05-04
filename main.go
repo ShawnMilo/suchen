@@ -5,7 +5,6 @@ import (
     "flag"
     "fmt"
     "log"
-    "milo/utils"
     "os"
     "path/filepath"
     "regexp"
@@ -83,13 +82,29 @@ func getExts(args []string) []string {
     return unused
 }
 
+// isDir returns true if name points to a directory
+func isDir(name string) bool {
+    file, err := os.Open(name)
+    if err != nil {
+        return false
+    }
+    defer file.Close()
+
+    info, err := file.Stat()
+    if err != nil {
+        return false
+    }
+
+    return info.Mode().IsDir()
+}
+
 // getRoot finds a valid directory in the command-line
 // args, sets it to the global "root" variable, and
 // returns the remaining arguments.
 func getRoot(args []string) []string {
     var unused []string
     for _, val := range args {
-        if utils.IsDir(val) {
+        if isDir(val) {
             if root != "" {
                 log.Fatalf("Too many directory arguments\n")
             } else {
