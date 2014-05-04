@@ -45,6 +45,8 @@ func getNames(c chan string) filepath.WalkFunc {
 // least. Optionally, a path (defaulting to "."), and
 // file extensions to search may be provided.
 func init() {
+    var insensitive = false
+    flag.BoolVar(&insensitive, "i", false, "Case-insensitive search.")
     flag.Parse()
     args := flag.Args()
     if len(args) == 0 {
@@ -55,7 +57,11 @@ func init() {
     if len(args) != 1 {
         log.Fatalf("Unable to find pattern.\n")
     }
-    p, err := regexp.Compile(args[0])
+    var ci string
+    if insensitive {
+        ci = "(?i)"
+    }
+    p, err := regexp.Compile(ci + args[0])
     if err != nil {
         log.Fatal(err)
     }
