@@ -183,7 +183,7 @@ func checkFile(filename string, output chan string) {
         line += 1
         found := pattern.FindIndex(scanner.Bytes())
         if found != nil {
-            output <- fmt.Sprintf("%s:%d: %s\n", filename, line, scanner.Text())
+            output <- fmt.Sprintf("%s:%d: %s", filename, line, scanner.Text())
         }
     }
 }
