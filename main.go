@@ -7,12 +7,14 @@ import (
     "milo/utils"
     "os"
     "path/filepath"
+    "regexp"
+    "runtime"
     "strings"
 )
 
 var root string
 var extensions []string
-var pattern string
+var pattern *regexp.Regexp
 
 // getNames creates a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
@@ -37,6 +39,15 @@ func init() {
     }
     args = getExts(args)
     args = getRoot(args)
+    if len(args) != 1 {
+        log.Fatalf("Unable to find pattern.\n")
+    }
+    p, err := regexp.Compile(args[0])
+    if err != nil {
+        log.Fatal(err)
+    }
+    pattern = p
+    runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
 // getExts sets the extensions global variable,
