@@ -5,7 +5,6 @@ import (
     "flag"
     "fmt"
     "log"
-    "milo/utils"
     "os"
     "path/filepath"
     "regexp"
@@ -89,7 +88,7 @@ func getExts(args []string) []string {
 func getRoot(args []string) []string {
     var unused []string
     for _, val := range args {
-        if utils.IsDir(val) {
+        if IsDir(val) {
             if root != "" {
                 log.Fatalf("Too many directory arguments\n")
             } else {
@@ -158,4 +157,12 @@ func checkFile(filename string) {
             fmt.Printf("%s:%d: %s\n", filename, line, scanner.Text())
         }
     }
+}
+
+func IsDir(path string) bool {
+    stat, err := os.Stat(path)
+    if err != nil {
+        return false
+    }
+    return stat.IsDir()
 }
