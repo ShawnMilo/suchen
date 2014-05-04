@@ -31,7 +31,7 @@ func getNames(c chan string) filepath.WalkFunc {
                 }
             }
             return nil
-        } 
+        }
         c <- path
         return nil
     }
