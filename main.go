@@ -23,7 +23,7 @@ func getNames(c chan string) filepath.WalkFunc {
         if !info.Mode().IsRegular() {
             return nil
         }
-        if extensions {
+        if len(extensions) > 0 {
             for _, ext := range extensions {
                 if filepath.Ext(path) == ext {
                     c <- path
