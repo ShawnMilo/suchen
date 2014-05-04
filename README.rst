@@ -3,8 +3,9 @@ suchen
 ======
 
 ``suchen`` is a search script for finding text very quickly within files. It
-is intended to be used similarly to ack-grep, but should run faster. It
-currently does not support case-insensitive matching.
+is intended to be used similarly to ack-grep, but should run faster. 
+Case-insensitive matching can be done by passing ``-i`` as the first 
+command-line argument.
 
 Like ack-grep, an advantage over basic grep is that you can search only
 within files with specific extensions. All searches are recursive.
