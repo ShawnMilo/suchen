@@ -7,12 +7,12 @@ suchen
 Basic usage::
 
     # Find pattern "foo" in all files, starting in the current dir.
-    suchen 'foo' 
+    suchen foo
 
 Search in certain file extensions::
 
     # Find pattern "foo" in Python files, starting in the current dir.
-    suchen 'foo' --py 
+    suchen foo --py
 
 Using regular expressions:
 
