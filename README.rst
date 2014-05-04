@@ -24,6 +24,13 @@ Using regular expressions::
     # Find imports of jQuery within HTML pages, regardless of version.
     suchen 'script.*jquery\.js' --html
 
+Installation
+============
+
+None. Just copy the binary for your platform from the release, or compile
+the source yourself with Go. It is recommended that you rename the binary
+to just ``suchen``, since the downloads are named by platform.
+
 License
 =======
 
