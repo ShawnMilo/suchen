@@ -20,9 +20,19 @@ var pattern *regexp.Regexp
 // filepath.Walk which passes the filenames found into a channel.
 func getNames(c chan string) filepath.WalkFunc {
     return func(path string, info os.FileInfo, err error) error {
-        if info.Mode().IsRegular() {
-            c <- path
+        if !info.Mode().IsRegular() {
+            return nil
         }
+        if extensions {
+            for _, ext := range extensions {
+                if filepath.Ext(path) == ext {
+                    c <- path
+                    return nil
+                }
+            }
+            return nil
+        } 
+        c <- path
         return nil
     }
 }
@@ -57,7 +67,10 @@ func getExts(args []string) []string {
     var unused []string
     for _, val := range args {
         if strings.HasPrefix(val, "--") {
-            extensions = append(extensions, val)
+            if len(val) < 3 {
+                log.Fatalf("Invalid extension: '%s'\n", val)
+            }
+            extensions = append(extensions, val[2:])
         } else {
             unused = append(unused, val)
         }
@@ -88,23 +101,15 @@ func getRoot(args []string) []string {
 }
 
 func main() {
-
     filenames := make(chan string, 3333)
-
-    // Make a function containing this channel.
     f := getNames(filenames)
-
     go func() {
         filepath.Walk(root, f)
         close(filenames)
     }()
-
     count := 0
-
     for _ = range filenames {
         count += 1
     }
-
     fmt.Printf("%d files found.\n", count)
-
 }
