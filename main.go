@@ -188,7 +188,6 @@ func checkFile(filename string, output chan string) {
     }
 }
 
-
 func IsDir(path string) bool {
     stat, err := os.Stat(path)
     if err != nil {
