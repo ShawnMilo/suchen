@@ -122,14 +122,15 @@ func getRoot(args []string) []string {
 func main() {
     filenames := make(chan string, buffer)
     toProcess := make(chan string, buffer)
-    done := make(chan bool, buffer)
+    output := make(chan string, buffer)
+    done := make(chan bool)
     walkFunc := getNames(filenames)
     go func() {
         filepath.Walk(root, walkFunc)
         close(filenames)
     }()
     for i := 0; i < cpus; i++ {
-        go feedCheckFile(toProcess, done)
+        go feedCheckFile(toProcess, done, output)
     }
     go func() {
         for filename := range filenames {
@@ -137,12 +138,20 @@ func main() {
         }
         close(toProcess)
     }()
-    for i := 0; i < cpus; i++ {
-        <-done
-    }
-    defer func() {
-        os.Stdout.Sync()
+    go func() {
+        for i := 0; i < cpus; i++ {
+            <-done
+        }
+        close(output)
     }()
+
+    for line := range output {
+        _, err := fmt.Println(line)
+        if err != nil {
+            log.Fatal(err)
+        }
+    }
+
 }
 
 // feedCheckFile receives a channel of strings and a done
@@ -150,19 +159,21 @@ func main() {
 // easier to rewrite checkFile to just add a simple loop, but this
 // allows the checkFile code to remain simpler in case I decide
 // to use it differently later.
-func feedCheckFile(filenames chan string, done chan bool) {
+func feedCheckFile(filenames chan string, done chan bool, output chan string) {
     for val := range filenames {
-        checkFile(val)
+        checkFile(val, output)
     }
-    done <- true
+    defer func() {
+        done <- true
+    }()
 }
 
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
-func checkFile(filename string) {
+func checkFile(filename string, output chan string) {
     file, err := os.Open(filename)
     if err != nil {
-        log.Println(err)
+        log.Fatal(err)
         return
     }
     defer file.Close()
@@ -172,10 +183,11 @@ func checkFile(filename string) {
         line += 1
         found := pattern.FindIndex(scanner.Bytes())
         if found != nil {
-            fmt.Printf("%s:%d: %s\n", filename, line, scanner.Text())
+            output <- fmt.Sprintf("%s:%d: %s\n", filename, line, scanner.Text())
         }
     }
 }
+
 
 func IsDir(path string) bool {
     stat, err := os.Stat(path)
