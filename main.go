@@ -71,7 +71,7 @@ func getExts(args []string) []string {
             if len(val) < 3 {
                 log.Fatalf("Invalid extension: '%s'\n", val)
             }
-            extensions = append(extensions, val[2:])
+            extensions = append(extensions, "." + val[2:])
         } else {
             unused = append(unused, val)
         }
@@ -103,22 +103,30 @@ func getRoot(args []string) []string {
 
 func main() {
     filenames := make(chan string, 3333)
+    results := make(chan bool, 3333)
     f := getNames(filenames)
     go func() {
         filepath.Walk(root, f)
         close(filenames)
     }()
+    count := 0
     for filename := range filenames {
-        go checkFile(filename)
+        count += 1
+        go checkFile(filename, results)
+    }
+    for count > 0 {
+        <- results
+        count--
     }
 }
 
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
-func checkFile(filename string) {
+func checkFile(filename string, done chan bool) {
     file, err := os.Open(filename)
     if err != nil {
         log.Println(err)
+        done <- true
         return
     }
     scanner := bufio.NewScanner(file)
@@ -127,7 +135,8 @@ func checkFile(filename string) {
         line += 1
         found := pattern.FindIndex(scanner.Bytes())
         if found != nil {
-            fmt.Println("%s: line %d", filename, line)
+            fmt.Printf("%s: line %d: %s\n", filename, line, scanner.Text())
         }
     }
+    done <- true
 }
