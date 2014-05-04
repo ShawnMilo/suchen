@@ -108,14 +108,14 @@ func getRoot(args []string) []string {
 func main() {
     filenames := make(chan string, buffer)
     toProcess := make(chan string, buffer)
-    results := make(chan bool, buffer)
+    done := make(chan bool, buffer)
     walkFunc := getNames(filenames)
     go func() {
         filepath.Walk(root, walkFunc)
         close(filenames)
     }()
     for i := 0; i < cpus; i++ {
-        go feedCheckFile(toProcess, results)
+        go feedCheckFile(toProcess, done)
     }
     go func() {
         for filename := range filenames {
@@ -124,20 +124,20 @@ func main() {
         close(toProcess)
     }()
     for i := 0; i < cpus; i++ {
-        <-results
+        <-done
     }
 }
 
-// feedCheckFile receives a channel of strings and a results
+// feedCheckFile receives a channel of strings and a done
 // channel (of bool) and calls checkFile in a loop. It would be
 // easier to rewrite checkFile to just add a simple loop, but this
 // allows the checkFile code to remain simpler in case I decide
 // to use it differently later.
-func feedCheckFile(filenames chan string, results chan bool) {
+func feedCheckFile(filenames chan string, done chan bool) {
     for val := range filenames {
         checkFile(val)
     }
-    results <- true
+    done <- true
 }
 
 // checkFile takes a filename and reads the file to determine
