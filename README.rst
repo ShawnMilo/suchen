@@ -14,7 +14,7 @@ Search in certain file extensions::
     # Find pattern "foo" in Python files, starting in the current dir.
     suchen foo --py
 
-Using regular expressions:
+Using regular expressions::
 
     # Find imports of jQuery within HTML pages, regardless of version.
     suchen 'script.*jquery\.js' --html
