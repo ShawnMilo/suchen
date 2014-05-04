@@ -23,3 +23,8 @@ Using regular expressions::
 
     # Find imports of jQuery within HTML pages, regardless of version.
     suchen 'script.*jquery\.js' --html
+
+License
+=======
+
+BSD
