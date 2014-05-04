@@ -13,9 +13,12 @@ import (
     "strings"
 )
 
+const buffer = 500
+
 var root string
 var extensions []string
 var pattern *regexp.Regexp
+var cpus int
 
 // getNames creates a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
@@ -58,7 +61,8 @@ func init() {
         log.Fatal(err)
     }
     pattern = p
-    runtime.GOMAXPROCS(runtime.NumCPU())
+    cpus = runtime.NumCPU()
+    runtime.GOMAXPROCS(cpus)
 }
 
 // getExts sets the extensions global variable,
@@ -102,31 +106,46 @@ func getRoot(args []string) []string {
 }
 
 func main() {
-    filenames := make(chan string, 3333)
-    results := make(chan bool, 3333)
-    f := getNames(filenames)
+    filenames := make(chan string, buffer)
+    toProcess := make(chan string, buffer)
+    results := make(chan bool, buffer)
+    walkFunc := getNames(filenames)
     go func() {
-        filepath.Walk(root, f)
+        filepath.Walk(root, walkFunc)
         close(filenames)
     }()
-    count := 0
-    for filename := range filenames {
-        count += 1
-        go checkFile(filename, results)
+    for i := 0; i < cpus; i++ {
+        go feedCheckFile(toProcess, results)
     }
-    for count > 0 {
+    go func() {
+        for filename := range filenames {
+            toProcess <- filename
+        }
+        close(toProcess)
+    }()
+    for i := 0; i < cpus; i++ {
         <-results
-        count--
     }
+}
+
+// feedCheckFile receives a channel of strings and a results
+// channel (of bool) and calls checkFile in a loop. It would be
+// easier to rewrite checkFile to just add a simple loop, but this
+// allows the checkFile code to remain simpler in case I decide 
+// to use it differently later.
+func feedCheckFile(filenames chan string, results chan bool) {
+    for val := range(filenames) {
+        checkFile(val)
+    }
+    results <- true
 }
 
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
-func checkFile(filename string, done chan bool) {
+func checkFile(filename string) {
     file, err := os.Open(filename)
     if err != nil {
         log.Println(err)
-        done <- true
         return
     }
     defer file.Close()
@@ -139,5 +158,4 @@ func checkFile(filename string, done chan bool) {
             fmt.Printf("%s:%d: %s\n", filename, line, scanner.Text())
         }
     }
-    done <- true
 }
