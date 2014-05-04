@@ -1,6 +1,7 @@
 package main
 
 import (
+    "bufio"
     "flag"
     "fmt"
     "log"
@@ -107,9 +108,26 @@ func main() {
         filepath.Walk(root, f)
         close(filenames)
     }()
-    count := 0
-    for _ = range filenames {
-        count += 1
+    for filename := range filenames {
+        go checkFile(filename)
     }
-    fmt.Printf("%d files found.\n", count)
+}
+
+// checkFile takes a filename and reads the file to determine
+// whether the file contains the regex in the global pattern. 
+func checkFile(filename string) {
+   file, err := os.Open(filename)
+   if err != nil {
+       log.Println(err)
+       return
+    }
+    scanner := bufio.NewScanner(file)
+    line := 0
+    for scanner.Scan() {
+        line += 1
+        found := pattern.FindIndex(scanner.Bytes())
+        if found != nil {
+            fmt.Println("%s: line %d", filename, line)
+        }
+    }
 }
