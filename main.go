@@ -7,7 +7,6 @@ import (
     "os"
     "path/filepath"
     "regexp"
-    "runtime"
     "strings"
 )
 
@@ -16,27 +15,25 @@ const buffer = 500
 var root string
 var extensions []string
 var pattern *regexp.Regexp
-var cpus int
+var insensitive = false
 
-// getNames creates a filepath.WalkFunc suitable for passing to
+// search creates a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
-func getNames(c chan string) filepath.WalkFunc {
-    return func(path string, info os.FileInfo, err error) error {
-        if !info.Mode().IsRegular() {
-            return nil
-        }
-        if len(extensions) > 0 {
-            for _, ext := range extensions {
-                if filepath.Ext(path) == ext {
-                    c <- path
-                    return nil
-                }
-            }
-            return nil
-        }
-        c <- path
+func search(path string, info os.FileInfo, err error) error {
+    if !info.Mode().IsRegular() {
         return nil
     }
+    if len(extensions) > 0 {
+        for _, ext := range extensions {
+            if filepath.Ext(path) == ext {
+                checkFile(path)
+                return nil
+            }
+        }
+        return nil
+    }
+    checkFile(path)
+    return nil
 }
 
 // init parses the command-line arguments into the values
@@ -50,33 +47,34 @@ func init() {
     }
     args = getExts(args)
     args = getRoot(args)
-    ci, args := getCaseStr(args)
+    args = getCaseStr(args)
     if len(args) != 1 {
         log.Fatalf("Unable to find pattern.\n")
     }
-    p, err := regexp.Compile(ci + args[0])
+    pat = args[0]
+    if insensitive {
+        pat = strings.ToLower(pat)
+    }
+    p, err := regexp.Compile(pat)
     if err != nil {
         log.Fatal(err)
     }
     pattern = p
-    cpus = runtime.NumCPU()
-    runtime.GOMAXPROCS(cpus)
 }
 
 // getCaseStr accepts command-line flags and strips out
 // the -i flag (if it exists). It returns a boolean for whether
 // the regex should be case-insensitive and the args.
-func getCaseStr(args []string) (string, []string) {
+func getCaseStr(args []string) []string {
     var unused []string
-    ci := ""
     for _, val := range args {
         if val == "-i" {
-            ci = "(?i)"
+            insensitive = true
         } else {
             unused = append(unused, val)
         }
     }
-    return ci, unused
+    return unused
 }
 
 // getExts sets the extensions global variable,
@@ -120,57 +118,12 @@ func getRoot(args []string) []string {
 }
 
 func main() {
-    filenames := make(chan string, buffer)
-    toProcess := make(chan string, buffer)
-    output := make(chan string, buffer)
-    done := make(chan bool)
-    walkFunc := getNames(filenames)
-    go func() {
-        filepath.Walk(root, walkFunc)
-        close(filenames)
-    }()
-    for i := 0; i < cpus; i++ {
-        go feedCheckFile(toProcess, done, output)
-    }
-    go func() {
-        for filename := range filenames {
-            toProcess <- filename
-        }
-        close(toProcess)
-    }()
-    go func() {
-        for i := 0; i < cpus; i++ {
-            <-done
-        }
-        close(output)
-    }()
-
-    for line := range output {
-        _, err := fmt.Println(line)
-        if err != nil {
-            log.Fatal(err)
-        }
-    }
-
-}
-
-// feedCheckFile receives a channel of strings and a done
-// channel (of bool) and calls checkFile in a loop. It would be
-// easier to rewrite checkFile to just add a simple loop, but this
-// allows the checkFile code to remain simpler in case I decide
-// to use it differently later.
-func feedCheckFile(filenames chan string, done chan bool, output chan string) {
-    for val := range filenames {
-        checkFile(val, output)
-    }
-    defer func() {
-        done <- true
-    }()
+    filepath.Walk(root, search)
 }
 
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
-func checkFile(filename string, output chan string) {
+func checkFile(filename string) {
     file, err := os.Open(filename)
     if err != nil {
         log.Fatal(err)
@@ -181,9 +134,13 @@ func checkFile(filename string, output chan string) {
     line := 0
     for scanner.Scan() {
         line += 1
-        found := pattern.FindIndex(scanner.Bytes())
+        txt := scanner.Text()
+        if insensitive {
+            txt = strings.ToLower(txt)
+        }
+        found := pattern.FindIndex([]bytes(txt))
         if found != nil {
-            output <- fmt.Sprintf("%s:%d:%s", filename, line, scanner.Text())
+            fmt.Printf("%s:%d:%s\n", filename, line, scanner.Text())
         }
     }
 }
