@@ -51,7 +51,7 @@ func init() {
     if len(args) != 1 {
         log.Fatalf("Unable to find pattern.\n")
     }
-    pat = args[0]
+    pat := args[0]
     if insensitive {
         pat = strings.ToLower(pat)
     }
@@ -138,7 +138,7 @@ func checkFile(filename string) {
         if insensitive {
             txt = strings.ToLower(txt)
         }
-        found := pattern.FindIndex([]bytes(txt))
+        found := pattern.FindIndex([]byte(txt))
         if found != nil {
             fmt.Printf("%s:%d:%s\n", filename, line, scanner.Text())
         }
