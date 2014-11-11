@@ -146,7 +146,6 @@ func checkFile(filename string) {
 		found := pattern.FindIndex([]byte(txt))
 		if found != nil {
 			if fileType[:4] != "text" {
-				fmt.Printf("Binary file %s matches.\n", filename)
 				break
 			}
 			fmt.Printf("%s:%d:%s\n", filename, line, txt)
