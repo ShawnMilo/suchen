@@ -8,15 +8,25 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
 const buffer = 500
 
+type ping struct{}
+
 var root string
 var extensions []string
 var pattern *regexp.Regexp
 var insensitive = false
+
+var pipe = make(chan string, buffer)
+var done = make(chan ping)
+
+func init() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+}
 
 // search creates a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
@@ -27,13 +37,13 @@ func search(path string, info os.FileInfo, err error) error {
 	if len(extensions) > 0 {
 		for _, ext := range extensions {
 			if filepath.Ext(path) == ext {
-				checkFile(path)
+				pipe <- path
 				return nil
 			}
 		}
 		return nil
 	}
-	checkFile(path)
+	pipe <- path
 	return nil
 }
 
@@ -119,38 +129,49 @@ func getRoot(args []string) []string {
 }
 
 func main() {
+	for i:= 0; i <  runtime.NumCPU(); i++ {
+        go checkFile()
+    }
 	filepath.Walk(root, search)
+    close(pipe)
+	for i:= 0; i <  runtime.NumCPU(); i++ {
+        <- done
+    }
 }
 
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
-func checkFile(filename string) {
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	var fileType string
-	line := 0
-	for scanner.Scan() {
-		line += 1
-		txt := scanner.Text()
-		if line == 1 {
-			fileType = http.DetectContentType(scanner.Bytes())
+func checkFile() {
+	for filename := range pipe {
+		file, err := os.Open(filename)
+		defer file.Close()
+		if err != nil {
+			log.Fatal(err)
+			return
 		}
-		if insensitive {
-			txt = strings.ToLower(txt)
-		}
-		found := pattern.FindIndex([]byte(txt))
-		if found != nil {
-			if fileType[:4] != "text" {
-				break
+		scanner := bufio.NewScanner(file)
+		var fileType string
+		line := 0
+		for scanner.Scan() {
+			line += 1
+			txt := scanner.Text()
+			if line == 1 {
+				fileType = http.DetectContentType(scanner.Bytes())
 			}
-			fmt.Printf("%s:%d:%s\n", filename, line, txt)
+			if insensitive {
+				txt = strings.ToLower(txt)
+			}
+			found := pattern.FindIndex([]byte(txt))
+			if found != nil {
+				if fileType[:4] != "text" {
+					break
+				}
+				fmt.Printf("%s:%d:%s\n", filename, line, txt)
+			}
 		}
+        file.Close()
 	}
+	done <- ping{}
 }
 
 func IsDir(path string) bool {
