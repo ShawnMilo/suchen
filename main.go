@@ -129,14 +129,14 @@ func getRoot(args []string) []string {
 }
 
 func main() {
-	for i:= 0; i <  runtime.NumCPU(); i++ {
-        go checkFile()
-    }
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go checkFile()
+	}
 	filepath.Walk(root, search)
-    close(pipe)
-	for i:= 0; i <  runtime.NumCPU(); i++ {
-        <- done
-    }
+	close(pipe)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		<-done
+	}
 }
 
 // checkFile takes a filename and reads the file to determine
@@ -169,7 +169,7 @@ func checkFile() {
 				fmt.Printf("%s:%d:%s\n", filename, line, txt)
 			}
 		}
-        file.Close()
+		file.Close()
 	}
 	done <- ping{}
 }
