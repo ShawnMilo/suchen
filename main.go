@@ -35,7 +35,7 @@ func init() {
 // filepath.Walk which passes the filenames found into a channel.
 func search(path string, info os.FileInfo, err error) error {
 	if err != nil {
-        return err
+		return err
 	}
 	if !info.Mode().IsRegular() {
 		return nil
@@ -143,6 +143,7 @@ func main() {
 	for i := 0; i < workers; i++ {
 		<-done
 	}
+	os.Stdout.Sync()
 }
 
 // checkFile takes a filename and reads the file to determine
@@ -159,7 +160,7 @@ func checkFile() {
 		var fileType string
 		line := 0
 		for scanner.Scan() {
-			line ++
+			line++
 			txt := scanner.Text()
 			if line == 1 {
 				fileType = http.DetectContentType(scanner.Bytes())
