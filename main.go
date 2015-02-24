@@ -13,7 +13,10 @@ import (
 )
 
 const buffer = 500
+const workers = 20
 
+// ping is an empty struct to send through channels
+// as a notification that something finished.
 type ping struct{}
 
 var root string
@@ -28,9 +31,12 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
-// search creates a filepath.WalkFunc suitable for passing to
+// search is a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
 func search(path string, info os.FileInfo, err error) error {
+	if err != nil {
+        return err
+	}
 	if !info.Mode().IsRegular() {
 		return nil
 	}
@@ -54,13 +60,13 @@ func search(path string, info os.FileInfo, err error) error {
 func init() {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		log.Fatalf("No arguments passed.")
+		log.Fatal("No arguments passed.")
 	}
 	args = getExts(args)
 	args = getRoot(args)
 	args = getCaseStr(args)
 	if len(args) != 1 {
-		log.Fatalf("Unable to find pattern.\n")
+		log.Fatal("Unable to find pattern.")
 	}
 	pat := args[0]
 	if insensitive {
@@ -68,7 +74,7 @@ func init() {
 	}
 	p, err := regexp.Compile(pat)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Unable to compile pattern %q: %q\n", pat, err)
 	}
 	pattern = p
 }
@@ -112,7 +118,7 @@ func getExts(args []string) []string {
 func getRoot(args []string) []string {
 	var unused []string
 	for _, val := range args {
-		if IsDir(val) {
+		if isDir(val) {
 			if root != "" {
 				log.Fatalf("Too many directory arguments\n")
 			} else {
@@ -129,12 +135,12 @@ func getRoot(args []string) []string {
 }
 
 func main() {
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < workers; i++ {
 		go checkFile()
 	}
 	filepath.Walk(root, search)
 	close(pipe)
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < workers; i++ {
 		<-done
 	}
 }
@@ -153,7 +159,7 @@ func checkFile() {
 		var fileType string
 		line := 0
 		for scanner.Scan() {
-			line += 1
+			line ++
 			txt := scanner.Text()
 			if line == 1 {
 				fileType = http.DetectContentType(scanner.Bytes())
@@ -174,7 +180,7 @@ func checkFile() {
 	done <- ping{}
 }
 
-func IsDir(path string) bool {
+func isDir(path string) bool {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return false
