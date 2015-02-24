@@ -13,7 +13,7 @@ import (
 )
 
 const buffer = 500
-const workers = 20
+const workers = 10
 
 // ping is an empty struct to send through channels
 // as a notification that something finished.
@@ -24,7 +24,8 @@ var extensions []string
 var pattern *regexp.Regexp
 var insensitive = false
 
-var pipe = make(chan string, buffer)
+var filenames = make(chan string, buffer)
+var output = make(chan []string)
 var done = make(chan ping)
 
 func init() {
@@ -43,13 +44,13 @@ func search(path string, info os.FileInfo, err error) error {
 	if len(extensions) > 0 {
 		for _, ext := range extensions {
 			if filepath.Ext(path) == ext {
-				pipe <- path
+				filenames <- path
 				return nil
 			}
 		}
 		return nil
 	}
-	pipe <- path
+	filenames <- path
 	return nil
 }
 
@@ -138,10 +139,23 @@ func main() {
 	for i := 0; i < workers; i++ {
 		go checkFile()
 	}
-	filepath.Walk(root, search)
-	close(pipe)
-	for i := 0; i < workers; i++ {
-		<-done
+
+	go func() {
+		filepath.Walk(root, search)
+		close(filenames)
+	}()
+
+	go func() {
+		for i := 0; i < workers; i++ {
+			<-done
+		}
+		close(output)
+	}()
+
+	for lines := range output {
+		for _, line := range lines {
+			fmt.Println(line)
+		}
 	}
 	os.Stdout.Sync()
 }
@@ -149,7 +163,7 @@ func main() {
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
 func checkFile() {
-	for filename := range pipe {
+	for filename := range filenames {
 		file, err := os.Open(filename)
 		defer file.Close()
 		if err != nil {
@@ -159,6 +173,7 @@ func checkFile() {
 		scanner := bufio.NewScanner(file)
 		var fileType string
 		line := 0
+		var lines []string
 		for scanner.Scan() {
 			line++
 			txt := scanner.Text()
@@ -173,9 +188,10 @@ func checkFile() {
 				if fileType[:4] != "text" {
 					break
 				}
-				fmt.Printf("%s:%d:%s\n", filename, line, txt)
+				lines = append(lines, fmt.Sprintf("%s:%d:%s", filename, line, txt))
 			}
 		}
+		output <- lines
 		file.Close()
 	}
 	done <- ping{}
