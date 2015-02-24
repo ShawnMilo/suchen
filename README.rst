@@ -10,6 +10,9 @@ Case-insensitive matching can be done by passing ``-i`` as an argument.
 Like ack-grep, an advantage over basic grep is that you can search only
 within files with specific extensions. All searches are recursive.
 
+``suchen`` should run faster on multi-core machines because it checks
+files concurrently.
+
 Basic usage::
 
     # Find pattern "foo" in all files, starting in the current dir.
