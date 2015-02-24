@@ -2,15 +2,17 @@
 suchen
 ======
 
-``suchen`` is a search script for finding text very quickly within files. It
-is intended to be used similarly to ack-grep, but without the need to
-install anything (good for users without sudo privileges).
+``suchen`` is meant to be a drop-in replacement for
+ack-grep (http://beyondgrep.com/) for situations when you are unable
+to install software on your server. Because it's written in Go, suchen
+can be compiled to a stand-alone, static binary.
+
 Case-insensitive matching can be done by passing ``-i`` as an argument.
 
 Like ack-grep, an advantage over basic grep is that you can search only
 within files with specific extensions. All searches are recursive.
 
-``suchen`` should run faster on multi-core machines because it checks
+``suchen`` should run faster than ack-grep on multi-core machines because it checks
 files concurrently.
 
 Basic usage::
