@@ -13,7 +13,7 @@ import (
 )
 
 const buffer = 500
-const workers = 10
+const workers = 100
 
 // ping is an empty struct to send through channels
 // as a notification that something finished.
@@ -176,7 +176,8 @@ func checkFile() {
 		var lines []string
 		for scanner.Scan() {
 			line++
-			txt := scanner.Text()
+			orig := scanner.Text()
+			txt := orig
 			if line == 1 {
 				fileType = http.DetectContentType(scanner.Bytes())
 			}
@@ -188,7 +189,7 @@ func checkFile() {
 				if fileType[:4] != "text" {
 					break
 				}
-				lines = append(lines, fmt.Sprintf("%s:%d:%s", filename, line, txt))
+				lines = append(lines, fmt.Sprintf("%s:%d:%s", filename, line, orig))
 			}
 		}
 		output <- lines
