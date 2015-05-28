@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -14,6 +16,8 @@ import (
 
 const buffer = 500
 const workers = 100
+
+var ignore []string
 
 // ping is an empty struct to send through channels
 // as a notification that something finished.
@@ -30,6 +34,21 @@ var done = make(chan ping)
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	// Read rc file if available.
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	rc, err := ioutil.ReadFile(path.Join(cwd, ".suchenrc"))
+	ignore = []string{}
+	if err != nil {
+		return
+	}
+	for _, bad := range strings.Split(string(rc), "\n") {
+		if bad != "" {
+			ignore = append(ignore, bad)
+		}
+	}
 }
 
 // search is a filepath.WalkFunc suitable for passing to
@@ -153,7 +172,13 @@ func main() {
 	}()
 
 	for lines := range output {
+	RESULTS:
 		for _, line := range lines {
+			for _, ugly := range ignore {
+				if strings.Contains(line, ugly) {
+					break RESULTS
+				}
+			}
 			fmt.Println(line)
 		}
 	}
