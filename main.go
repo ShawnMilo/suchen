@@ -40,7 +40,8 @@ func init() {
 		log.Fatal(err)
 	}
 	rc, err := ioutil.ReadFile(path.Join(cwd, ".suchenrc"))
-	ignore = []string{}
+	// Default values for ignore.
+	ignore = []string{"__pycache__"}
 	if err != nil {
 		return
 	}
