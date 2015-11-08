@@ -10,16 +10,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 const buffer = 500
 const workers = 100
 
 var ignore []string
-
-// ping is an empty struct to send through channels
-// as a notification that something finished.
-type ping struct{}
+var wg = sync.WaitGroup{}
 
 var root string
 var extensions []string
@@ -28,7 +26,6 @@ var insensitive = false
 
 var filenames = make(chan string, buffer)
 var output = make(chan []string)
-var done = make(chan ping)
 
 func init() {
 	// Read rc file if available.
@@ -154,6 +151,7 @@ func getRoot(args []string) []string {
 
 func main() {
 	for i := 0; i < workers; i++ {
+		wg.Add(1)
 		go checkFile()
 	}
 
@@ -163,9 +161,7 @@ func main() {
 	}()
 
 	go func() {
-		for i := 0; i < workers; i++ {
-			<-done
-		}
+		wg.Wait()
 		close(output)
 	}()
 
@@ -186,6 +182,7 @@ func main() {
 // checkFile takes a filename and reads the file to determine
 // whether the file contains the regex in the global pattern.
 func checkFile() {
+	defer wg.Done()
 	for filename := range filenames {
 		file, err := os.Open(filename)
 		defer file.Close()
@@ -218,7 +215,6 @@ func checkFile() {
 		output <- lines
 		file.Close()
 	}
-	done <- ping{}
 }
 
 func isDir(path string) bool {
