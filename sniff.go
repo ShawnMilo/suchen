@@ -7,7 +7,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/binary"
 )
 
 // The algorithm uses at most sniffLen bytes to make its decision.
@@ -164,44 +163,6 @@ func (h htmlSig) match(data []byte, firstNonWS int) string {
 		return ""
 	}
 	return "text/html; charset=utf-8"
-}
-
-var mp4ftype = []byte("ftyp")
-
-type mp4Sig int
-
-func (mp4Sig) match(data []byte, firstNonWS int) string {
-	// c.f. section 6.1.
-	if len(data) < 8 {
-		return ""
-	}
-	boxSize := int(binary.BigEndian.Uint32(data[:4]))
-	if boxSize%4 != 0 || len(data) < boxSize {
-		return ""
-	}
-	if !bytes.Equal(data[4:8], mp4ftype) {
-		return ""
-	}
-	for st := 8; st < boxSize; st += 4 {
-		if st == 12 {
-			// minor version number
-			continue
-		}
-		seg := string(data[st : st+3])
-		switch seg {
-		case "mp4", "iso", "M4V", "M4P", "M4B":
-			return "video/mp4"
-			/* The remainder are not in the spec.
-			case "M4A":
-				return "audio/mp4"
-			case "3gp":
-				return "video/3gpp"
-			case "jp2":
-				return "image/jp2" // JPEG 2000
-			*/
-		}
-	}
-	return ""
 }
 
 type textSig int
