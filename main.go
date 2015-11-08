@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 )
 
@@ -33,7 +32,6 @@ var output = make(chan []string)
 var done = make(chan ping)
 
 func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	// Read rc file if available.
 	cwd, err := os.Getwd()
 	if err != nil {
