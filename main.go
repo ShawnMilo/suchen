@@ -86,8 +86,8 @@ func init() {
 	if len(args) == 0 {
 		log.Fatal("No arguments passed.")
 	}
-    // get the extensions from args and put them into the global extensions
-    // slice
+	// get the extensions from args and put them into the global extensions
+	// slice
 	args = getExts(args)
 	args = getCaseStr(args)
 	args = getRoot(args)
