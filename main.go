@@ -13,7 +13,6 @@ import (
 	"sync"
 )
 
-const buffer = 500
 const workers = 100
 
 var ignore []string
@@ -24,14 +23,20 @@ var extensions []string
 var pattern *regexp.Regexp
 var insensitive = false
 
-var filenames = make(chan string, buffer)
+var filenames = make(chan string)
+
+// output takes []string instead of string so all lines from
+// the same file are printed together, instead of interleaved with
+// the output of other files
 var output = make(chan []string)
 
 func init() {
-	// Read rc file if available.
+	// Read rc file if available. This allows suchen to skip directories
+	// we don't care about.
+
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Couldn't get current working directory: ", err)
 	}
 	rc, err := ioutil.ReadFile(path.Join(cwd, ".suchenrc"))
 	// Default values for ignore.
@@ -52,9 +57,13 @@ func search(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
+	// ignore directories, etc.
 	if !info.Mode().IsRegular() {
 		return nil
 	}
+
+	// if extensions is set, only put this filename in the channel if its
+	// extension is one of the ones we care about
 	if len(extensions) > 0 {
 		for _, ext := range extensions {
 			if filepath.Ext(path) == ext {
@@ -77,9 +86,11 @@ func init() {
 	if len(args) == 0 {
 		log.Fatal("No arguments passed.")
 	}
+    // get the extensions from args and put them into the global extensions
+    // slice
 	args = getExts(args)
-	args = getRoot(args)
 	args = getCaseStr(args)
+	args = getRoot(args)
 	if len(args) != 1 {
 		log.Fatal("Unable to find pattern.")
 	}
