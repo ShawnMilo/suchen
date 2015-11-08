@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -203,7 +202,7 @@ func checkFile() {
 			orig := scanner.Text()
 			txt := orig
 			if line == 1 {
-				fileType = http.DetectContentType(scanner.Bytes())
+				fileType = DetectContentType(scanner.Bytes())
 			}
 			if insensitive {
 				txt = strings.ToLower(txt)
