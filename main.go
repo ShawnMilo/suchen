@@ -55,7 +55,8 @@ func init() {
 // filepath.Walk which passes the filenames found into a channel.
 func search(path string, info os.FileInfo, err error) error {
 	if err != nil {
-		return err
+		log.Printf("error checking %q: %q\n", path, err)
+		return nil
 	}
 	// ignore directories, etc.
 	if !info.Mode().IsRegular() {
