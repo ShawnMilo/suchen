@@ -3,25 +3,24 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 )
 
-const workers = 100
+const workers = 32
 
-var ignore []string
 var wg = sync.WaitGroup{}
 
 var root string
 var extensions []string
+var plain string
 var pattern *regexp.Regexp
-var insensitive = false
+var insensitive bool
+var regexSearch = true
 
 var filenames = make(chan string)
 
@@ -29,27 +28,6 @@ var filenames = make(chan string)
 // the same file are printed together, instead of interleaved with
 // the output of other files
 var output = make(chan []string)
-
-func init() {
-	// Read rc file if available. This allows suchen to skip directories
-	// we don't care about.
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("Couldn't get current working directory: ", err)
-	}
-	rc, err := ioutil.ReadFile(path.Join(cwd, ".suchenrc"))
-	// Default values for ignore.
-	ignore = []string{"__pycache__"}
-	if err != nil {
-		return
-	}
-	for _, bad := range strings.Split(string(rc), "\n") {
-		if bad != "" {
-			ignore = append(ignore, bad)
-		}
-	}
-}
 
 // search is a filepath.WalkFunc suitable for passing to
 // filepath.Walk which passes the filenames found into a channel.
@@ -92,16 +70,17 @@ func init() {
 	args = getExts(args)
 	args = getCaseStr(args)
 	args = getRoot(args)
+	args = getRegexFlag(args)
 	if len(args) != 1 {
 		log.Fatal("Unable to find pattern.")
 	}
-	pat := args[0]
+	plain = args[0]
 	if insensitive {
-		pat = strings.ToLower(pat)
+		plain = strings.ToLower(plain)
 	}
-	p, err := regexp.Compile(pat)
+	p, err := regexp.Compile(plain)
 	if err != nil {
-		log.Fatalf("Unable to compile pattern %q: %q\n", pat, err)
+		log.Fatalf("Unable to compile pattern %q: %q\n", plain, err)
 	}
 	pattern = p
 }
@@ -114,6 +93,21 @@ func getCaseStr(args []string) []string {
 	for _, val := range args {
 		if val == "-i" {
 			insensitive = true
+		} else {
+			unused = append(unused, val)
+		}
+	}
+	return unused
+}
+
+// getRegexFlag accepts command-line flags and strips out
+// the -n flag (if it exists). It returns a boolean for whether
+// a regex or plain-text search should be done.
+func getRegexFlag(args []string) []string {
+	var unused []string
+	for _, val := range args {
+		if val == "-n" {
+			regexSearch = false
 		} else {
 			unused = append(unused, val)
 		}
@@ -162,6 +156,7 @@ func getRoot(args []string) []string {
 }
 
 func main() {
+
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go checkFile()
@@ -178,13 +173,7 @@ func main() {
 	}()
 
 	for lines := range output {
-	RESULTS:
 		for _, line := range lines {
-			for _, ugly := range ignore {
-				if strings.Contains(line, ugly) {
-					break RESULTS
-				}
-			}
 			fmt.Println(line)
 		}
 	}
@@ -195,12 +184,12 @@ func main() {
 // whether the file contains the regex in the global pattern.
 func checkFile() {
 	defer wg.Done()
+	pat := pattern.Copy()
 	for filename := range filenames {
 		file, err := os.Open(filename)
 		defer file.Close()
 		if err != nil {
-			log.Fatal(err)
-			return
+			log.Printf("error attempting to read %q: %q\n", filename, err)
 		}
 		scanner := bufio.NewScanner(file)
 		var fileType string
@@ -212,16 +201,22 @@ func checkFile() {
 			txt := orig
 			if line == 1 {
 				fileType = DetectContentType(scanner.Bytes())
+				if fileType[:4] != "text" {
+					break
+				}
 			}
 			if insensitive {
 				txt = strings.ToLower(txt)
 			}
-			found := pattern.FindIndex([]byte(txt))
-			if found != nil {
-				if fileType[:4] != "text" {
-					break
+			if regexSearch {
+				found := pat.FindIndex([]byte(txt))
+				if found != nil {
+					lines = append(lines, fmt.Sprintf("%s:%d:%s", filename, line, orig))
 				}
-				lines = append(lines, fmt.Sprintf("%s:%d:%s", filename, line, orig))
+			} else {
+				if strings.Contains(txt, plain) {
+					lines = append(lines, fmt.Sprintf("%s:%d:%s", filename, line, orig))
+				}
 			}
 		}
 		output <- lines
